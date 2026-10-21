@@ -4,6 +4,11 @@ import { learnPromptTerminator, looksLikeInputPrompt, looksLikePrompt, stripEcho
 import { lastNonEmptyLine, tidyOutput } from './util/text'
 import { abortError } from './util/sse'
 
+/** Longest a polled capture is reused when nothing observable changed (guards against missed buffer changes such as reflow). */
+const SNAPSHOT_MAX_AGE_MS = 1000
+/** Minimum gap between `onProgress` calls: each one re-renders the whole panel. */
+const PROGRESS_MIN_INTERVAL_MS = 250
+
 /** What the runner needs from the registry (kept narrow so tests can fake it). */
 export interface RunnerHost {
     mark (entry: TerminalEntry): BufferPosition
@@ -46,6 +51,19 @@ interface ObserveContext extends ObserveOptions {
     terminator: string | null
 }
 
+/** A poll's view of the buffer, reused until the terminal changes. */
+interface PollSnapshot {
+    cap: BufferCapture
+    provisional: string[]
+    text: string
+    rawLast: string
+    seq: number
+    cursorRow: number
+    startRow: number
+    trimmed: boolean
+    at: number
+}
+
 export class TerminalRunner {
     constructor (private host: RunnerHost) {}
 
@@ -83,6 +101,9 @@ export class TerminalRunner {
         let lastText = ''
         let lastSeq = entry.outputSeq
         let lastChangeAt = t0
+        let sentProgress = ''
+        let lastProgressAt = 0
+        let snap: PollSnapshot | null = null
 
         const finish = (state: RunResult['state'], cap: BufferCapture, lines: string[]): RunResult => {
             const output = tidyOutput(lines.join('\n'))
@@ -109,17 +130,35 @@ export class TerminalRunner {
                 const screen = this.host.captureLast(entry, 40)
                 return finish('reset', screen, screen.lines)
             }
-            const cap = this.host.captureSince(entry, ctx.start)
             const cursorRow = this.host.cursorRow(entry)
+            // Re-reading the buffer is O(output since start): only do it when something observable moved.
+            if (!snap || snap.seq !== entry.outputSeq || snap.cursorRow !== cursorRow || snap.startRow !== position.row ||
+                snap.trimmed !== position.trimmed || now - snap.at >= SNAPSHOT_MAX_AGE_MS) {
+                const captured = this.host.captureSince(entry, ctx.start)
+                const lines = this.visibleLines(captured, ctx, false)
+                snap = {
+                    cap: captured,
+                    provisional: lines,
+                    text: lines.join('\n'),
+                    rawLast: lastNonEmptyLine(captured.lines.join('\n')),
+                    seq: entry.outputSeq,
+                    cursorRow,
+                    startRow: position.row,
+                    trimmed: position.trimmed,
+                    at: now,
+                }
+            }
+            const { cap, provisional, text, rawLast } = snap
             const moved = cursorRow > position.row || position.trimmed || entry.outputSeq > ctx.seqAtStart
-            const rawLast = lastNonEmptyLine(cap.lines.join('\n'))
 
-            const provisional = this.visibleLines(cap, ctx, false)
-            const text = provisional.join('\n')
             if (text !== lastText || entry.outputSeq !== lastSeq) {
                 lastText = text
                 lastSeq = entry.outputSeq
                 lastChangeAt = now
+            }
+            if (text !== sentProgress && now - lastProgressAt >= PROGRESS_MIN_INTERVAL_MS) {
+                sentProgress = text
+                lastProgressAt = now
                 ctx.onProgress?.(tidyOutput(text))
             }
             const quiet = now - lastChangeAt

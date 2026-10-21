@@ -105,7 +105,7 @@ Two details matter for correctness:
 
 `TerminalRunner` (in `terminal-runner.ts`) implements `run`, `sendKeys` and `waitForOutput` on top of a small `RunnerHost` interface, so the tests can drive it with a fake buffer.
 
-Before typing a command, it records the line under the cursor. Its last character is the **learned prompt terminator** (`$`, `#`, `❯`, …). Generic patterns cover shells it has not learned yet. It then polls the buffer every 150 ms and stops at the first of:
+Before typing a command, it records the line under the cursor. Its last character is the **learned prompt terminator** (`$`, `#`, `❯`, …). Generic patterns cover shells it has not learned yet. It then polls every 150 ms and stops at the first of the states below. A poll re-reads the buffer only when the output counter, the cursor row or the start position changed (or once a second as a safety net), and the live output callback is limited to one call per 250 ms.
 
 | State | Condition |
 | --- | --- |

@@ -217,3 +217,28 @@ test('translateKeys', () => {
     assert.equal(translateKeys('up'), '\x1b[A')
     assert.throws(() => translateKeys('hello'))
 })
+
+test('observe: a quiet terminal is not re-read from the buffer on every poll', async () => {
+    const shell = new FakeShell()
+    let captures = 0
+    const original = shell.captureSince.bind(shell)
+    shell.captureSince = (e, from) => { captures++; return original(e, from) }
+    const r = await new TerminalRunner(shell).waitForOutput(shell.entry, shell.mark(), { timeoutMs: 600, ...fast })
+    assert.equal(r.state, 'timeout')
+    // ~40 polls ran; the capture is reused until the output counter or cursor moves
+    assert.ok(captures <= 3, `captureSince ran ${captures} times`)
+})
+
+test('observe: progress callbacks are throttled but the final output is delivered', async () => {
+    const shell = new FakeShell()
+    const seen: string[] = []
+    for (let i = 0; i < 40; i++) setTimeout(() => shell.write(`line ${i}`), i * 10)
+    const r = await new TerminalRunner(shell).waitForOutput(shell.entry, shell.mark(), {
+        timeoutMs: 900,
+        ...fast,
+        onProgress: out => seen.push(out),
+    })
+    assert.equal(r.state, 'timeout')
+    assert.ok(seen.length >= 2 && seen.length <= 5, `onProgress ran ${seen.length} times`)
+    assert.ok(seen[seen.length - 1].endsWith('line 39'), 'latest output reached the panel')
+})

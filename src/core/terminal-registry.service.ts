@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable, Subscription } from 'rxjs'
 import { AppService, BaseTabComponent, SplitTabComponent } from 'tabby-core'
 import { BaseTerminalTabComponent } from 'tabby-terminal'
 import { TerminalDescriptor, TerminalKind } from '../types/session'
+import { logicalLines } from './util/buffer-lines'
 import { newId } from './util/ids'
 import { looksLikeInputPrompt } from './util/prompt-detect'
 
@@ -448,27 +449,7 @@ export class TerminalRegistryService {
     }
 
     private logicalLines (x: XtermLike, start: number, end: number, maxLines: number): string[] {
-        const buf = x.buffer.active
-        const out: string[] = []
-        // walk back to the start of a wrapped logical line so we don't cut it
-        let s = start
-        while (s > 0 && buf.getLine(s)?.isWrapped) {
-            s--
-        }
-        for (let i = s; i <= end; i++) {
-            const line = buf.getLine(i)
-            if (!line) continue
-            const text = line.translateToString(true)
-            if (line.isWrapped && out.length) {
-                out[out.length - 1] += text
-            } else {
-                out.push(text)
-            }
-            if (out.length > maxLines) {
-                out.shift()
-            }
-        }
-        return out
+        return logicalLines(x.buffer.active, start, end, maxLines)
     }
 
     private logicalLineAt (x: XtermLike, row: number): string {
