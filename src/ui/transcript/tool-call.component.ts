@@ -4,7 +4,7 @@ import { AgentService } from '../../core/agent.service'
 import { TerminalRegistryService } from '../../core/terminal-registry.service'
 import { ToolCallRecord } from '../../types/session'
 import { HOTKEY_IDS } from '../../types/config'
-import { countLines } from '../../core/util/text'
+import { ToolOutputMemo, ToolOutputView } from '../../core/util/tool-output'
 
 @Component({
     selector: 'ai-tool-call',
@@ -15,6 +15,7 @@ export class ToolCallComponent {
     @Input() call!: ToolCallRecord
 
     expanded: boolean | null = null    // null = automatic
+    private outputMemo = new ToolOutputMemo()
     answerDraft = ''
     showApproveMenu = false
 
@@ -127,28 +128,25 @@ export class ToolCallComponent {
         return !!this.call.progress && this.call.status === 'pending_approval'
     }
 
-    /** Result body without the bracketed status header line. */
+    /** Derived once per change of the source text, not once per change-detection pass. */
+    private get output (): ToolOutputView {
+        if (this.call.status === 'declined' || this.call.status === 'cancelled') return this.outputMemo.get('none', '')
+        return this.isRunning
+            ? this.outputMemo.get('live', this.call.progress ?? '')
+            : this.outputMemo.get('final', this.call.result ?? '')
+    }
+
+    /** Result body without the bracketed status header line (the tail only, while running). */
     get outputText (): string {
-        if (this.call.status === 'declined' || this.call.status === 'cancelled') return ''
-        const src = this.isRunning ? (this.call.progress ?? '') : (this.call.result ?? '')
-        if (!src) return ''
-        const lines = src.split('\n')
-        if (lines[0].startsWith('[') && lines[0].endsWith(']')) {
-            lines.shift()
-            // drop the hint line that follows a non-prompt state
-            if (lines.length && /^(The program is waiting|Interact with|Use wait_for_output|Check the current state)/.test(lines[0])) {
-                lines.shift()
-            }
-        }
-        return lines.join('\n').replace(/^\(no output\)$/, '')
+        return this.output.text
     }
 
     get outputLines (): number {
-        return countLines(this.outputText)
+        return this.output.lines
     }
 
     get hasOutput (): boolean {
-        return this.outputText.trim().length > 0
+        return this.output.hasOutput
     }
 
     get showOutput (): boolean {

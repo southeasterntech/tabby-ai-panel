@@ -38,7 +38,7 @@ Each tool call is shown as a card with a title (such as *Run in Linux-2*), a sta
 - a **risk badge** (`low`, `medium` or `high`)
 - the exact **command**
 - the model's one-sentence **explanation**
-- the **output**, live while the command runs, collapsible afterwards. If the output was cut before being sent to the model, the card says *shortened for the model*; the card itself always shows the full output.
+- the **output**, live while the command runs, collapsible afterwards. If the output was cut before being sent to the model, the card says *shortened for the model*; the card shows the full output once the command has finished. While it is running, the card shows the last 300 lines and the header still counts every line.
 
 The ↗ icon on a card switches to the terminal it ran in.
 
