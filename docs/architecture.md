@@ -155,7 +155,7 @@ Tool results are cut to `maxToolResultChars` (head + tail). `fitContextBudget()`
 
 ## Persistence
 
-`SessionStoreService` writes `<config dir>/ai-panel/sessions/<id>.json` plus `index.json`. Writes are queued and coalesced (400 ms), done atomically (temporary file, then rename), and flushed on `beforeunload`. A missing or corrupt index is rebuilt by scanning the session files. Loading goes through a `migrate()` hook, ready for future schema versions. See [Sessions](sessions.md) for the format.
+`SessionStoreService` writes `<config dir>/ai-panel/sessions/<id>.json` plus `index.json`. Writes go through `DeferredFileWriter`: they are queued and coalesced (2 s), done asynchronously and atomically (temporary file, then rename), and flushed synchronously on `beforeunload`, which also rewrites a write that is still in flight. A late asynchronous write never replaces a newer flush or brings back a deleted session. A missing or corrupt index is rebuilt by scanning the session files. Loading goes through a `migrate()` hook, ready for future schema versions. See [Sessions](sessions.md) for the format.
 
 ## UI
 

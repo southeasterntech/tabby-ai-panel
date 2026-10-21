@@ -11,7 +11,7 @@ For the session drawer itself (search, rename, delete), see [Using the panel](us
 
 ## Lifecycle
 
-- **Saving.** Changes are written after every step, coalesced over about 400 ms, and flushed when the window closes. Files are written atomically: to a temporary file first, then renamed.
+- **Saving.** Changes are written after every step, coalesced over about 2 seconds, and flushed when the window closes. The disk write is asynchronous. Files are written atomically: to a temporary file first, then renamed. After a crash the last couple of seconds of a session can be missing.
 - **Title.** With **Name sessions automatically** on, the first line of your first message becomes the title (up to 60 characters). Rename a session by double-clicking its title in the header or in the drawer. A name you set is never overwritten.
 - **New session.** **+** in the header, **New** in the drawer, or `Ctrl+Alt+N`. Starting or opening another session first stops a running turn.
 - **Deleting** a session removes its file. It cannot be undone.

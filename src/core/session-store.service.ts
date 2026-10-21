@@ -6,6 +6,13 @@ import * as os from 'os'
 import * as path from 'path'
 import { Session, SessionSummary, SESSION_SCHEMA_VERSION } from '../types/session'
 import { summarizeSession } from './session-utils'
+import { DeferredFileWriter } from './util/deferred-writer'
+
+/**
+ * Sessions are rewritten whole, so saves are spaced out: a long session is megabytes and the
+ * serialise step runs on the UI thread. A crash can lose the last couple of seconds of a session.
+ */
+const SAVE_DELAY_MS = 2000
 
 interface IndexFile {
     version: number
@@ -23,9 +30,7 @@ export class SessionStoreService {
     readonly sessionsDir: string
     private index: IndexFile = { version: 1, sessions: [] }
     private summaries = new BehaviorSubject<SessionSummary[]>([])
-    private pendingWrites = new Map<string, Session>()
-    private writeTimer: any = null
-    private indexDirty = false
+    private writer = new DeferredFileWriter({ delayMs: SAVE_DELAY_MS })
 
     get summaries$ (): Observable<SessionSummary[]> {
         return this.summaries.asObservable()
@@ -48,9 +53,9 @@ export class SessionStoreService {
     }
 
     load (id: string): Session | null {
-        const pending = this.pendingWrites.get(id)
-        if (pending) {
-            return pending
+        const unsaved = this.writer.get(id) as Session | undefined
+        if (unsaved) {
+            return unsaved
         }
         const file = this.fileFor(id)
         try {
@@ -67,38 +72,25 @@ export class SessionStoreService {
 
     /** Queue a write; coalesces rapid saves of the same session. */
     save (session: Session): void {
-        this.pendingWrites.set(session.id, session)
+        this.writer.queue(session.id, this.fileFor(session.id), session)
         this.upsertSummary(summarizeSession(session))
-        this.scheduleFlush()
     }
 
     delete (id: string): void {
-        this.pendingWrites.delete(id)
+        this.writer.drop(id)
         try {
             fs.rmSync(this.fileFor(id), { force: true })
         } catch (e) {
             console.error('[ai-panel] failed to delete session', id, e)
         }
         this.index.sessions = this.index.sessions.filter(s => s.id !== id)
-        this.indexDirty = true
+        this.queueIndex()
         this.summaries.next(this.list())
-        this.scheduleFlush()
     }
 
-    /** Write everything that is pending right now. */
+    /** Write everything that is pending right now, synchronously. */
     flush (): void {
-        if (this.writeTimer) {
-            clearTimeout(this.writeTimer)
-            this.writeTimer = null
-        }
-        for (const [id, session] of this.pendingWrites) {
-            writeJsonAtomic(this.fileFor(id), session)
-        }
-        this.pendingWrites.clear()
-        if (this.indexDirty) {
-            writeJsonAtomic(path.join(this.rootDir, 'index.json'), this.index)
-            this.indexDirty = false
-        }
+        this.writer.flushSync()
     }
 
     /** Re-scan the sessions directory (used when the index is missing/corrupt). */
@@ -119,9 +111,8 @@ export class SessionStoreService {
             }
         }
         this.index = { version: 1, sessions }
-        this.indexDirty = true
+        this.queueIndex()
         this.summaries.next(this.list())
-        this.scheduleFlush()
     }
 
     private fileFor (id: string): string {
@@ -152,18 +143,12 @@ export class SessionStoreService {
         } else {
             this.index.sessions.push(summary)
         }
-        this.indexDirty = true
+        this.queueIndex()
         this.summaries.next(this.list())
     }
 
-    private scheduleFlush (): void {
-        if (this.writeTimer) {
-            return
-        }
-        this.writeTimer = setTimeout(() => {
-            this.writeTimer = null
-            this.flush()
-        }, 400)
+    private queueIndex (): void {
+        this.writer.queue('index', path.join(this.rootDir, 'index.json'), this.index)
     }
 }
 
@@ -182,17 +167,6 @@ function resolveDataDir (platform: PlatformService): string {
 
 function sanitizeId (id: string): string {
     return id.replace(/[^a-zA-Z0-9_-]/g, '_')
-}
-
-function writeJsonAtomic (file: string, data: unknown): void {
-    const tmp = `${file}.${process.pid}.tmp`
-    try {
-        fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8')
-        fs.renameSync(tmp, file)
-    } catch (e) {
-        console.error('[ai-panel] failed to write', file, e)
-        try { fs.rmSync(tmp, { force: true }) } catch { /* ignore */ }
-    }
 }
 
 function migrate (raw: any): Session {
