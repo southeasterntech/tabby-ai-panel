@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- Long agent sessions no longer drive the renderer's main thread to 100% CPU. Three costs that grew with session length were removed:
+  - Each 150 ms poll of a running command re-read every buffer row since the command started. The scan is now bounded by the 2000 lines it returns, and the capture is reused until the terminal changes.
+  - Sessions were rewritten in full, synchronously, 400 ms after every step. Saves are now at least 2 s apart and the write is asynchronous.
+  - Each tool card re-derived its output text several times per change-detection pass, and a running command rendered up to 2000 lines in the card. The output is now computed once per change, and the live view shows the last 300 lines (the header still counts all of them).
+
 ### Documentation
 
 - New README with logo, badges and an up-to-date screenshot. Detailed guides moved to [`docs/`](docs/README.md): getting started, usage, configuration, sessions, safety, agent tools, architecture and development.
