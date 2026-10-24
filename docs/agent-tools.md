@@ -130,7 +130,7 @@ myproj/architect  (%0)  running: claude  state: WAITING  last: "Do you want to p
 myproj/qwen-5090  (%2)  running: python3  state: busy  last: "✻ Thinking… (12s · esc to interrupt)"
 ```
 
-The name is the pane's `@seat` option (set by the team scripts), else its title. `state` is a guess from the last lines: `WAITING` (an approval prompt, `[Y/n]`, a menu), `busy` (an agent is working), `shell` (a shell prompt) or `idle`. Read a pane before answering it. These tools talk to tmux directly and do not need a Tabby tab. They report "No tmux server is running" when there is none.
+The name is the pane's `@seat` option (set by the team scripts), else its pane id (`%3`). Pane titles are not used, because programs inside a pane can set them. `state` is a guess from the last lines: `WAITING` (an approval prompt, `[Y/n]`, a menu), `busy` (an agent is working), `shell` (a shell prompt) or `idle`. Read a pane before answering it. These tools talk to tmux directly and do not need a Tabby tab. They report "No tmux server is running" when there is none.
 
 ### `read_tmux_pane`
 

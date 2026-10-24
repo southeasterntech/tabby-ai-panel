@@ -1,4 +1,5 @@
 import { Component, Input } from '@angular/core'
+import { describeKeySteps, toKeySteps } from '../../core/util/tmux'
 import { ConfigService } from 'tabby-core'
 import { AgentService } from '../../core/agent.service'
 import { TerminalRegistryService } from '../../core/terminal-registry.service'
@@ -66,8 +67,11 @@ export class ToolCallComponent {
     get commandText (): string | null {
         switch (this.call.name) {
             case 'run_command': return String(this.call.args?.command ?? '')
-            case 'send_keys':
             case 'send_tmux_keys': {
+                const keys = this.call.args?.keys
+                return describeKeySteps(toKeySteps(Array.isArray(keys) ? keys.map(String) : [String(keys ?? '')]))
+            }
+            case 'send_keys': {
                 const keys = this.call.args?.keys
                 return Array.isArray(keys) ? keys.map(k => /^[a-z]+(-[a-z])?$/i.test(k) && k.length > 1 ? `⟨${k}⟩` : k).join(' ') : String(keys ?? '')
             }

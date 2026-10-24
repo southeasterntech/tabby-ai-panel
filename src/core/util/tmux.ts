@@ -30,14 +30,17 @@ export function parsePanes (output: string): TmuxPane[] {
     return panes
 }
 
-/** Short name shown to the model: the seat if there is one, else the pane title, else the id. */
+/**
+ * Name shown to the model: the seat if there is one, else the pane id. The pane
+ * title is never used: programs inside a pane set it with escape sequences, so
+ * it must not decide where keystrokes go.
+ */
 export function paneName (p: TmuxPane): string {
-    return p.seat || p.title || p.id
+    return p.seat || p.id
 }
 
 /**
- * Find one pane from a reference: `%3`, `seat`, `session/seat`, or an exact
- * pane title. A leading `@` is ignored. Throws with a helpful message when the
+ * Find one pane from a reference: `%3`, `seat` or `session/seat`. A leading `@` is ignored. Throws with a helpful message when the
  * reference matches nothing or more than one pane.
  */
 export function resolvePane (panes: TmuxPane[], ref: unknown): TmuxPane {
@@ -53,13 +56,10 @@ export function resolvePane (panes: TmuxPane[], ref: unknown): TmuxPane {
         const slash = raw.indexOf('/')
         const session = raw.slice(0, slash).toLowerCase()
         const name = raw.slice(slash + 1).toLowerCase()
-        matches = panes.filter(p => p.session.toLowerCase() === session && (p.seat.toLowerCase() === name || p.title.toLowerCase() === name))
+        matches = panes.filter(p => p.session.toLowerCase() === session && p.seat.toLowerCase() === name)
     } else {
         const name = raw.toLowerCase()
         matches = panes.filter(p => p.seat.toLowerCase() === name)
-        if (!matches.length) {
-            matches = panes.filter(p => p.title.toLowerCase() === name)
-        }
     }
     if (!matches.length) {
         throw new Error(`No tmux pane matches "${raw}". Available: ${panes.map(describe).join(', ') || '(none)'}.`)
@@ -128,6 +128,15 @@ export function assessedText (steps: KeyStep[]): { text: string, editing: boolea
         else if (!PLAIN_KEYS.has(s.value)) editing = true
     }
     return { text, editing }
+}
+
+/**
+ * How a key list is shown on the approval card, from the same steps that are
+ * executed: named keys as ⟨Enter⟩ / ⟨C-c⟩, typed text quoted with control
+ * characters escaped, so the card cannot read differently from what is sent.
+ */
+export function describeKeySteps (steps: KeyStep[]): string {
+    return steps.map(s => s.kind === 'key' ? `⟨${s.value}⟩` : JSON.stringify(s.value)).join(' ')
 }
 
 // ---- what is the pane doing

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { assessedText, classifyPane, paneName, parsePanes, resolvePane, toKeySteps } from '../src/core/util/tmux'
+import { assessedText, classifyPane, describeKeySteps, paneName, parsePanes, resolvePane, toKeySteps } from '../src/core/util/tmux'
 
 const SAMPLE = [
     '%0\tproj\tteam\tarchitect\tarchitect\tclaude\t1',
@@ -16,17 +16,18 @@ test('parsePanes reads tab-separated pane rows and skips junk', () => {
     assert.equal(panes.length, 4)
     assert.deepEqual(panes[0], { id: '%0', session: 'proj', window: 'team', seat: 'architect', title: 'architect', command: 'claude', active: true })
     assert.equal(panes[3].seat, '')
-    assert.equal(paneName(panes[3]), 'my-title')
+    assert.equal(paneName(panes[3]), '%3')
 })
 
-test('resolvePane accepts id, seat, session/seat, title and a leading @', () => {
+test('resolvePane accepts id, seat, session/seat and a leading @', () => {
     const panes = parsePanes(SAMPLE)
     assert.equal(resolvePane(panes, '%1').id, '%1')
     assert.equal(resolvePane(panes, 'supervisor').id, '%1')
     assert.equal(resolvePane(panes, '@supervisor').id, '%1')
     assert.equal(resolvePane(panes, 'other/architect').id, '%2')
     assert.equal(resolvePane(panes, 'PROJ/Architect').id, '%0')
-    assert.equal(resolvePane(panes, 'my-title').id, '%3')
+    // a pane title is set by the program in the pane, so it never addresses a pane
+    assert.throws(() => resolvePane(panes, 'my-title'), /No tmux pane matches/)
 })
 
 test('resolvePane explains ambiguity and misses', () => {
@@ -101,4 +102,9 @@ test('assessedText flags editing keys but not menu answers or interrupts', () =>
     assert.equal(assessedText(toKeySteps(['1'])).editing, false)
     assert.equal(assessedText(toKeySteps(['esc', 'y', 'enter'])).editing, false)
     assert.equal(assessedText(toKeySteps(['ctrl-c'])).editing, false)
+})
+
+test('describeKeySteps shows what is actually sent, with control characters escaped', () => {
+    assert.equal(describeKeySteps(toKeySteps(['rm', 'space', '-rf', 'enter'])), '"rm" ⟨Space⟩ "-rf" ⟨Enter⟩')
+    assert.equal(describeKeySteps(toKeySteps(['a\nb', 'ctrl-c'])), '"a\\nb" ⟨C-c⟩')
 })
