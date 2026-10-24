@@ -2,7 +2,7 @@
 import { execFile } from 'child_process'
 import { AgentTool, ApprovalRequirement } from './types'
 import { assessCommand, maxRisk, normalizeRisk } from '../util/risk'
-import { classifyPane, KeyStep, literalText, PANE_FORMAT, paneName, parsePanes, resolvePane, TmuxPane, toKeySteps } from '../util/tmux'
+import { assessedText, classifyPane, KeyStep, PANE_FORMAT, paneName, parsePanes, resolvePane, TmuxPane, toKeySteps } from '../util/tmux'
 
 const PANE_PARAM = {
     type: 'string',
@@ -130,8 +130,12 @@ export const sendTmuxKeysTool: AgentTool = {
     },
     approval (args): ApprovalRequirement {
         const keys = normalizeKeys(args.keys)
-        const text = literalText(toKeySteps(keys))
+        const { text, editing } = assessedText(toKeySteps(keys))
         const a = assessCommand(text, args.risk_level)
+        if (editing && text.trim()) {
+            // Text plus editing keys: what finally runs cannot be assessed, so always ask.
+            return { level: 'high', hardBlock: true, reason: 'typed text combined with editing keys (backspace, arrows, ctrl/alt chords) cannot be assessed' }
+        }
         // Typing into another agent is never "low": it acts with that agent's permissions.
         return { level: maxRisk(normalizeRisk(args.risk_level), maxRisk(a.level, 'medium')), hardBlock: a.hardBlock, reason: a.reason }
     },

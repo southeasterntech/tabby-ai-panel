@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyPane, literalText, paneName, parsePanes, resolvePane, toKeySteps } from '../src/core/util/tmux'
+import { assessedText, classifyPane, paneName, parsePanes, resolvePane, toKeySteps } from '../src/core/util/tmux'
 
 const SAMPLE = [
     '%0\tproj\tteam\tarchitect\tarchitect\tclaude\t1',
@@ -49,7 +49,7 @@ test('toKeySteps maps names to tmux keys and types everything else literally', (
         { kind: 'key', value: 'PageUp' },
         { kind: 'literal', value: 'hello world' },
     ])
-    assert.equal(literalText(steps), 'y1hello world')
+    assert.deepEqual(assessedText(steps), { text: 'y\n1hello world', editing: true })
 })
 
 test('classifyPane finds an agent approval prompt', () => {
@@ -73,4 +73,32 @@ test('classifyPane reports a shell or an idle program otherwise', () => {
     assert.equal(classifyPane('bash', ['user@host:~$']).state, 'shell')
     assert.equal(classifyPane('python3', ['loading model…done']).state, 'idle')
     assert.equal(classifyPane('claude', []).state, 'idle')
+})
+
+test('send_tmux_keys approval catches a destructive command split by space keys and text with editing keys', async () => {
+    const { sendTmuxKeysTool } = await import('../src/core/tools/tmux')
+    const split = sendTmuxKeysTool.approval({ keys: ['rm', 'space', '-rf', 'space', '/', 'enter'], risk_level: 'low' })!
+    assert.equal(split.hardBlock, true)
+    const edited = sendTmuxKeysTool.approval({ keys: ['echo hi', 'left', 'backspace', 'enter'], risk_level: 'low' })!
+    assert.equal(edited.hardBlock, true)
+    assert.equal(edited.level, 'high')
+    const plain = sendTmuxKeysTool.approval({ keys: ['y', 'enter'], risk_level: 'low' })!
+    assert.deepEqual([plain.level, plain.hardBlock], ['medium', false])
+    const menu = sendTmuxKeysTool.approval({ keys: ['down', 'enter'], risk_level: 'low' })!
+    assert.deepEqual([menu.level, menu.hardBlock], ['medium', false])
+})
+
+test('assessedText renders space, tab and enter so split commands stay visible', () => {
+    const r = assessedText(toKeySteps(['rm', 'space', '-rf', 'space', '/', 'enter']))
+    assert.equal(r.text, 'rm -rf /\n')
+    assert.equal(r.editing, false)
+    assert.equal(assessedText(toKeySteps(['ls', 'tab'])).text, 'ls\t')
+})
+
+test('assessedText flags editing keys but not menu answers or interrupts', () => {
+    assert.equal(assessedText(toKeySteps(['rm -rf /x', 'left', 'backspace', 'enter'])).editing, true)
+    assert.equal(assessedText(toKeySteps(['ctrl-a', 'x'])).editing, true)
+    assert.equal(assessedText(toKeySteps(['1'])).editing, false)
+    assert.equal(assessedText(toKeySteps(['esc', 'y', 'enter'])).editing, false)
+    assert.equal(assessedText(toKeySteps(['ctrl-c'])).editing, false)
 })

@@ -108,9 +108,26 @@ export function toKeySteps (keys: string[]): KeyStep[] {
     })
 }
 
-/** The text a key list would type, for risk assessment and display. */
-export function literalText (steps: KeyStep[]): string {
-    return steps.filter(s => s.kind === 'literal').map(s => s.value).join('')
+const PLAIN_KEYS = new Set(['Enter', 'Space', 'Tab', 'Escape', 'C-c'])
+
+/**
+ * What a key list would type, as faithfully as it can be rendered, for risk
+ * assessment. `editing` is true when a key other than plain whitespace, Enter,
+ * Escape or Ctrl-C is present: Backspace, arrows, Ctrl/Alt chords and the like
+ * can change the line after it was typed, so the rendered text may not be what
+ * runs.
+ */
+export function assessedText (steps: KeyStep[]): { text: string, editing: boolean } {
+    let text = ''
+    let editing = false
+    for (const s of steps) {
+        if (s.kind === 'literal') text += s.value
+        else if (s.value === 'Space') text += ' '
+        else if (s.value === 'Tab') text += '\t'
+        else if (s.value === 'Enter') text += '\n'
+        else if (!PLAIN_KEYS.has(s.value)) editing = true
+    }
+    return { text, editing }
 }
 
 // ---- what is the pane doing
