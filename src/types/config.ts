@@ -25,6 +25,8 @@ export interface AiPanelConfig {
     defaultCommandTimeout: number
     showReasoning: boolean
     autoTitle: boolean
+    /** Show tmux panes (team seats) in the chip bar and flag the ones waiting for an answer. */
+    tmuxWatch: boolean
 }
 
 export const CONFIG_KEY = 'aiPanel'
@@ -46,6 +48,7 @@ export const DEFAULT_CONFIG: AiPanelConfig = {
     defaultCommandTimeout: 60,
     showReasoning: true,
     autoTitle: true,
+    tmuxWatch: true,
 }
 
 export const HOTKEY_IDS = {

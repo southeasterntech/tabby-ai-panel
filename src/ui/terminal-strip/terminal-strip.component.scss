@@ -107,3 +107,36 @@
     .muted { margin-left: auto; font-size: .85em; opacity: .5; }
   }
 }
+
+.seat-chip {
+  padding-right: 9px;
+  opacity: 1;
+  border-style: dashed;
+  &.waiting { border-color: var(--ai-warning); border-style: solid; }
+}
+
+.seat-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--ai-border);
+  background: color-mix(in srgb, var(--ai-warning) 12%, transparent);
+  font-size: .9em;
+
+  i.fa-question-circle { color: var(--ai-warning); flex: none; }
+  .seat-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .seat-evidence { font-family: var(--ai-mono); opacity: .8; }
+  .seat-action, .seat-dismiss {
+    flex: none;
+    border: 1px solid var(--ai-border);
+    background: var(--ai-surface);
+    color: inherit;
+    font: inherit;
+    border-radius: 10px;
+    padding: 1px 9px;
+    cursor: pointer;
+    &:hover { background: var(--ai-surface-2); }
+  }
+  .seat-dismiss { padding: 1px 6px; }
+}

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { assessedText, classifyPane, describeKeySteps, paneName, parsePanes, resolvePane, toKeySteps } from '../src/core/util/tmux'
+import { assessedText, newlyWaiting, sameSeats, SeatView, classifyPane, describeKeySteps, paneName, parsePanes, resolvePane, toKeySteps } from '../src/core/util/tmux'
 
 const SAMPLE = [
     '%0\tproj\tteam\tarchitect\tarchitect\tclaude\t1',
@@ -117,4 +117,21 @@ test('describeKeySteps shows what is actually sent, with control characters esca
 test('describeKeySteps makes invisible and bidi characters visible', () => {
     assert.equal(describeKeySteps(toKeySteps(['y\u202Ees', 'a\u200Bb', 'x\u00A0y', 'say "hi"\\'])),
         '"y\\u{202e}es" "a\\u{200b}b" "x\\u{a0}y" "say \\"hi\\"\\\\"')
+})
+
+const seat = (id: string, state: SeatView['state'], evidence = ''): SeatView => ({ id, session: 's', name: id, command: 'claude', state, evidence })
+
+test('newlyWaiting reports a seat once per question', () => {
+    const idle = [seat('%0', 'idle'), seat('%1', 'busy')]
+    const ask = [seat('%0', 'waiting', 'Proceed?'), seat('%1', 'busy')]
+    assert.deepEqual(newlyWaiting(idle, ask).map(s => s.id), ['%0'])
+    assert.deepEqual(newlyWaiting(ask, ask), [])
+    assert.deepEqual(newlyWaiting(ask, [seat('%0', 'waiting', 'Another?'), seat('%1', 'busy')]).map(s => s.id), ['%0'])
+    assert.deepEqual(newlyWaiting([], ask).map(s => s.id), ['%0'])
+})
+
+test('sameSeats ignores identical snapshots and notices changes', () => {
+    assert.equal(sameSeats([seat('%0', 'idle')], [seat('%0', 'idle')]), true)
+    assert.equal(sameSeats([seat('%0', 'idle')], [seat('%0', 'busy')]), false)
+    assert.equal(sameSeats([seat('%0', 'idle')], []), false)
 })

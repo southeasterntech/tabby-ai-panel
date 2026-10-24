@@ -115,6 +115,13 @@
     </div>
     <toggle [(ngModel)]="c.autoTitle" (ngModelChange)="save()"></toggle>
   </div>
+  <div class="form-line">
+    <div class="header">
+      <div class="title">Show tmux panes in the chip bar</div>
+      <div class="description">List tmux panes (such as team seats) next to the terminals and flag the ones that look like they are waiting for an answer. Read-only: nothing is typed unless you ask the agent to.</div>
+    </div>
+    <toggle [(ngModel)]="c.tmuxWatch" (ngModelChange)="save()"></toggle>
+  </div>
 
   <h4>Context</h4>
   <div class="form-line">

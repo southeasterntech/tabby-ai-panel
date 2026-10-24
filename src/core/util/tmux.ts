@@ -219,3 +219,32 @@ export function classifyPane (command: string, lastLines: string[]): PaneClassif
     }
     return { state: 'idle', evidence: last.trim() }
 }
+
+// ---- watching
+
+export interface SeatView {
+    id: string
+    session: string
+    name: string
+    command: string
+    state: PaneState
+    evidence: string
+}
+
+/** Seats that are waiting now but were not waiting (or had a different question) in the previous snapshot. */
+export function newlyWaiting (prev: SeatView[], next: SeatView[]): SeatView[] {
+    const before = new Map(prev.map(s => [s.id, s]))
+    return next.filter(s => {
+        if (s.state !== 'waiting') return false
+        const was = before.get(s.id)
+        return !was || was.state !== 'waiting' || was.evidence !== s.evidence
+    })
+}
+
+/** Cheap structural comparison so an unchanged poll does not trigger change detection. */
+export function sameSeats (a: SeatView[], b: SeatView[]): boolean {
+    return a.length === b.length && a.every((s, i) => {
+        const o = b[i]
+        return s.id === o.id && s.state === o.state && s.evidence === o.evidence && s.command === o.command && s.name === o.name
+    })
+}

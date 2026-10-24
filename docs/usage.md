@@ -82,6 +82,8 @@ Labels come from the tab: a name you gave it, otherwise the profile name for non
 | Click a closed chip (🔌) | Reopens the tab from its Tabby profile, keeping the custom name you gave the original tab, and re-attaches it to the same key. |
 | **×** on a chip | Removes the terminal from this session. The agent can no longer see or reach it. It disappears from the snapshot, `list_terminals` and @-mentions, and every tool rejects it. The tab itself stays open. Disabled while the agent is running something there. |
 | **N hidden** | Lists the removed terminals; click one to restore it. |
+| `tmux` chip | A tmux pane (for example a team seat), found by polling tmux every 5 s. Green-grey dot: idle, pulsing: busy, amber outline: looks like it is waiting for an answer. Turn it off with *Show tmux panes in the chip bar*. |
+| Waiting banner | Under the chip bar when a pane looks like it is waiting. **Handle** asks the agent to read it with `read_tmux_pane` and answer with `send_tmux_keys` if the answer is obvious (otherwise it asks you). The send still needs your approval in the normal way. **×** dismisses it until that pane asks something else. |
 
 ### Working in the background
 

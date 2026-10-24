@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - tmux tools: `list_tmux_panes`, `read_tmux_pane` and `send_tmux_keys` let the agent scan every tmux pane (for example the seats of a team session), see which look like they are waiting for an answer, and type a reply. Sending always needs at least `medium` approval.
+- tmux panes appear as chips in the chip bar, with a status dot. A seat that looks like it is waiting for an answer gets a banner with a **Handle** button, which asks the agent to read it and answer if the answer is obvious. Nothing is typed without the normal approval. Polling is every 5 s, read-only, and can be turned off with the *Show tmux panes in the chip bar* setting.
 
 ### Fixed
 

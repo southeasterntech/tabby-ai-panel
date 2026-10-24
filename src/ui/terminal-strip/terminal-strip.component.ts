@@ -2,6 +2,8 @@ import { Component, HostListener, OnDestroy, OnInit } from '@angular/core'
 import { Subscription } from 'rxjs'
 import { AgentService, SessionTerminalView } from '../../core/agent.service'
 import { TerminalRegistryService } from '../../core/terminal-registry.service'
+import { TmuxWatcherService } from '../../core/tmux-watcher.service'
+import { SeatView } from '../../core/util/tmux'
 
 @Component({
     selector: 'ai-terminal-strip',
@@ -15,23 +17,57 @@ export class TerminalStripComponent implements OnInit, OnDestroy {
     /** Viewport position of the hidden-terminals menu (position: fixed, so the strip's scroll clipping cannot hide it). */
     menuPos = { top: 0, left: 0 }
     reconnecting = new Set<string>()
+    seats: SeatView[] = []
+    /** Seats whose current question the user dismissed (pane id → evidence). */
+    private dismissed = new Map<string, string>()
     private sub = new Subscription()
 
     constructor (
         private agent: AgentService,
         private registry: TerminalRegistryService,
+        private watcher: TmuxWatcherService,
     ) {}
 
     ngOnInit (): void {
         this.sub.add(this.agent.state$.subscribe(() => this.refresh()))
         this.sub.add(this.registry.changed$.subscribe(() => this.refresh()))
+        this.sub.add(this.watcher.seats$.subscribe(seats => { this.seats = seats }))
+        this.watcher.start()
         // status dots depend on time (recent output) – tick gently
         const timer = setInterval(() => this.refresh(), 1500)
         this.sub.add({ unsubscribe: () => clearInterval(timer) } as Subscription)
     }
 
     ngOnDestroy (): void {
+        this.watcher.stop()
         this.sub.unsubscribe()
+    }
+
+    trackSeat (_i: number, s: SeatView): string {
+        return s.id
+    }
+
+    /** Seats asking a question the user has not dismissed. */
+    get waitingSeats (): SeatView[] {
+        return this.seats.filter(s => s.state === 'waiting' && this.dismissed.get(s.id) !== s.evidence)
+    }
+
+    seatTitle (s: SeatView): string {
+        const what = s.state === 'waiting' ? `waiting: ${s.evidence}` : s.state
+        return `tmux ${s.session}/${s.name} · ${s.command} · ${what}`
+    }
+
+    dismissSeat (s: SeatView, event?: MouseEvent): void {
+        event?.stopPropagation()
+        this.dismissed.set(s.id, s.evidence)
+    }
+
+    /** Ask the agent to look at a waiting seat. Answering still goes through the normal approval gate. */
+    handleSeat (s: SeatView, event?: MouseEvent): void {
+        event?.stopPropagation()
+        if (this.agent.busy) return   // the agent is mid-turn: keep the banner so it can be handled after
+        this.dismissSeat(s)
+        void this.agent.send(`The tmux seat "${s.session}/${s.name}" looks like it is waiting for an answer (last line: ${JSON.stringify(s.evidence)}). Read it with read_tmux_pane. If the answer is obvious and safe, answer it with send_tmux_keys; otherwise ask me with your recommendation.`)
     }
 
     trackView (_i: number, v: SessionTerminalView): string {

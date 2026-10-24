@@ -50,12 +50,12 @@ export function runTmux (args: string[], signal?: AbortSignal): Promise<string> 
     })
 }
 
-async function listPanes (signal?: AbortSignal): Promise<TmuxPane[]> {
+export async function listPanes (signal?: AbortSignal): Promise<TmuxPane[]> {
     return parsePanes(await runTmux(['list-panes', '-a', '-F', PANE_FORMAT], signal))
 }
 
 /** The last `lines` lines of a pane, wrapped lines joined, trailing blank lines dropped. */
-async function capture (pane: TmuxPane, lines: number, signal?: AbortSignal): Promise<string[]> {
+export async function capture (pane: TmuxPane, lines: number, signal?: AbortSignal): Promise<string[]> {
     const out = await runTmux(['capture-pane', '-p', '-J', '-t', pane.id, '-S', `-${lines}`], signal)
     const all = out.split('\n')
     while (all.length && !all[all.length - 1].trim()) all.pop()

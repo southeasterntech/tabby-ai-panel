@@ -38,6 +38,7 @@ Change all settings in **Settings → AI Panel**. They are stored in Tabby's own
 | Switch to the terminal the agent is working in | `focusTerminalOnRun` | `false` | Bring the target tab into view when the agent acts there. Keyboard focus stays in the panel. |
 | Show model reasoning | `showReasoning` | `true` | Show a collapsible *Reasoning* section for models that stream their thinking. |
 | Name sessions automatically | `autoTitle` | `true` | Use the first message as the session title. |
+| Show tmux panes in the chip bar | `tmuxWatch` | `true` | List tmux panes (such as team seats) next to the terminals, flag the ones waiting for an answer, and poll tmux every 5 s while the panel is open. Read-only. |
 | *(drag the panel edge)* | `panelWidth` | `420` | Panel width in px. Minimum 300. |
 | *(open/close the panel)* | `panelVisible` | `false` | Whether the panel was open. Restored on startup. |
 

@@ -1,4 +1,4 @@
-<div class="strip" *ngIf="views.length || hidden.length">
+<div class="strip" *ngIf="views.length || hidden.length || seats.length">
   <div class="chip-wrap" *ngFor="let v of views; trackBy: trackView">
     <button type="button" class="chip"
             [class.used]="v.used" [class.disconnected]="!v.entry" [class.active]="v.isActive"
@@ -16,6 +16,16 @@
             [title]="v.status === 'running' ? 'Stop the agent before removing a terminal it is using' : 'Remove ' + v.key + ' from this session – the agent will no longer see or use it'"
             (click)="remove(v, $event)">
       <i class="fas fa-times"></i>
+    </button>
+  </div>
+
+  <div class="chip-wrap" *ngFor="let s of seats; trackBy: trackSeat">
+    <button type="button" class="chip seat-chip" [class.waiting]="s.state === 'waiting'"
+            [title]="seatTitle(s)"
+            (click)="s.state === 'waiting' ? handleSeat(s, $event) : null">
+      <span class="dot" [ngClass]="s.state === 'waiting' ? 'awaiting_input' : s.state === 'busy' ? 'running' : 'idle'"></span>
+      <span class="key">tmux</span>
+      <span class="label">{{ s.name }}</span>
     </button>
   </div>
 
@@ -38,4 +48,11 @@
       </button>
     </div>
   </div>
+</div>
+
+<div class="seat-banner" *ngFor="let s of waitingSeats; trackBy: trackSeat">
+  <i class="fas fa-question-circle"></i>
+  <span class="seat-text"><b>{{ s.name }}</b> looks like it is waiting: <span class="seat-evidence">{{ s.evidence }}</span></span>
+  <button type="button" class="seat-action" (click)="handleSeat(s, $event)" title="Ask the agent to read this seat and answer if the answer is obvious">Handle</button>
+  <button type="button" class="seat-dismiss" (click)="dismissSeat(s, $event)" title="Dismiss until it asks something else"><i class="fas fa-times"></i></button>
 </div>
