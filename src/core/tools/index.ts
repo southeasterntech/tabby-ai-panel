@@ -3,6 +3,7 @@ import { assessCommand, maxRisk, normalizeRisk } from '../util/risk'
 import { translateKeys } from '../terminal-runner'
 import { RunResult } from '../terminal-runner'
 import { countLines, formatDuration } from '../util/text'
+import { TMUX_TOOLS } from './tmux'
 
 const TERMINAL_PARAM = {
     type: 'string',
@@ -366,6 +367,7 @@ export const ALL_TOOLS: AgentTool[] = [
     askUserTool,
     openTerminalTool,
     focusTerminalTool,
+    ...TMUX_TOOLS,
 ]
 
 export function findTool (name: string): AgentTool | undefined {

@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- tmux tools: `list_tmux_panes`, `read_tmux_pane` and `send_tmux_keys` let the agent scan every tmux pane (for example the seats of a team session), see which look like they are waiting for an answer, and type a reply. Sending always needs at least `medium` approval.
+
 ### Fixed
 
 - Long agent sessions no longer drive the renderer's main thread to 100% CPU. Three costs that grew with session length were removed:

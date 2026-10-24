@@ -12,6 +12,9 @@ The model works through the tools below, sent as OpenAI-style function definitio
 | [`ask_user`](#ask_user) | Ask you a question in the panel | never |
 | [`open_terminal`](#open_terminal) | Open a new tab from a saved Tabby profile | as `medium` risk |
 | [`focus_terminal`](#focus_terminal) | Switch your view to a terminal, for example so you can type a password | never |
+| [`list_tmux_panes`](#list_tmux_panes) | List tmux panes (such as team seats) and guess which are waiting for an answer | never |
+| [`read_tmux_pane`](#read_tmux_pane) | Read the last lines of a tmux pane without typing | never |
+| [`send_tmux_keys`](#send_tmux_keys) | Type an answer into a tmux pane | always at least `medium` |
 
 "By risk" means the [approval mode](usage.md#approval-modes) decides, based on the risk level described in [Safety](safety.md#how-risk-is-assessed).
 
@@ -117,6 +120,37 @@ Opens a new tab and returns its key. It counts as `medium` risk, so it needs app
 | `terminal` | string, required | Target terminal. |
 
 Selects the tab and gives it keyboard focus. Used when you need to interact with the terminal yourself.
+
+### `list_tmux_panes`
+
+No parameters. Lists every pane of every tmux session on this machine, one line each:
+
+```text
+myproj/architect  (%0)  running: claude  state: WAITING  last: "Do you want to proceed?"
+myproj/qwen-5090  (%2)  running: python3  state: busy  last: "✻ Thinking… (12s · esc to interrupt)"
+```
+
+The name is the pane's `@seat` option (set by the team scripts), else its title. `state` is a guess from the last lines: `WAITING` (an approval prompt, `[Y/n]`, a menu), `busy` (an agent is working), `shell` (a shell prompt) or `idle`. Read a pane before answering it. These tools talk to tmux directly and do not need a Tabby tab. They report "No tmux server is running" when there is none.
+
+### `read_tmux_pane`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `pane` | string, required | A seat name (`architect`), `session/seat` when several sessions have that seat, or a pane id (`%3`). |
+| `lines` | integer | Lines from the bottom. Default 60, maximum 400. |
+
+Reads the pane's screen and scrollback with wrapped lines joined. Nothing is typed.
+
+### `send_tmux_keys`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `pane` | string, required | Target pane, as for `read_tmux_pane`. |
+| `keys` | string[], required | Sequence of keys. Plain text is typed literally; `enter`, `tab`, `esc`, `space`, `backspace`, `up`, `down`, `left`, `right`, `ctrl-c` and similar names are sent as keys. |
+| `explanation` | string, required | What the pane asked and why this is the right answer. Shown on the card. |
+| `risk_level` | `low` \| `medium` \| `high`, required | Risk of what the answer causes. |
+
+Always at least `medium` risk, because the text goes to another agent that may run with its permissions turned off. The typed text also goes through the same destructive-pattern checks as `run_command`. A short pause is inserted between typed text and a following key so programs that treat a fast burst as a paste still see the Enter. About a second after sending, the result shows the pane's last lines.
 
 ## Result states
 

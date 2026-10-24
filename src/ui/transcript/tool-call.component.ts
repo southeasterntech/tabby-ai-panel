@@ -37,6 +37,9 @@ export class ToolCallComponent {
             case 'ask_user': return 'fa-question-circle'
             case 'open_terminal': return 'fa-plus-square'
             case 'focus_terminal': return 'fa-crosshairs'
+            case 'list_tmux_panes': return 'fa-th-large'
+            case 'read_tmux_pane': return 'fa-eye'
+            case 'send_tmux_keys': return 'fa-keyboard'
             default: return 'fa-cog'
         }
     }
@@ -52,6 +55,9 @@ export class ToolCallComponent {
             case 'ask_user': return 'Question for you'
             case 'open_terminal': return `Open "${this.call.args?.profile ?? ''}"`
             case 'focus_terminal': return t ? `Focus ${t}` : 'Focus terminal'
+            case 'list_tmux_panes': return 'List tmux panes'
+            case 'read_tmux_pane': return `Read tmux ${this.call.args?.pane ?? 'pane'}`
+            case 'send_tmux_keys': return `Answer tmux ${this.call.args?.pane ?? 'pane'}`
             default: return this.call.name
         }
     }
@@ -60,7 +66,8 @@ export class ToolCallComponent {
     get commandText (): string | null {
         switch (this.call.name) {
             case 'run_command': return String(this.call.args?.command ?? '')
-            case 'send_keys': {
+            case 'send_keys':
+            case 'send_tmux_keys': {
                 const keys = this.call.args?.keys
                 return Array.isArray(keys) ? keys.map(k => /^[a-z]+(-[a-z])?$/i.test(k) && k.length > 1 ? `⟨${k}⟩` : k).join(' ') : String(keys ?? '')
             }

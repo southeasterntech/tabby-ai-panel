@@ -20,6 +20,8 @@ Every action that can change something gets a risk level, and the session's [app
 | `run_command` | The model's `risk_level`, raised by local pattern checks (below) |
 | `send_keys` | The model's `risk_level`, at least `medium` unless every key is benign (`ctrl-c`, `esc`, `enter`, `q`, arrows, …) |
 | `open_terminal` | always `medium` |
+| `send_tmux_keys` | the model's `risk_level`, raised by the same pattern checks as `run_command`, and never below `medium` |
+| `list_tmux_panes`, `read_tmux_pane` | none: read-only, never ask |
 | `list_terminals`, `read_terminal`, `wait_for_output`, `ask_user`, `focus_terminal` | none: read-only, never ask |
 
 You can stop the agent at any time with ■ or `Ctrl+Alt+S`, and interrupt a running command from its card with **Send Ctrl+C**.
