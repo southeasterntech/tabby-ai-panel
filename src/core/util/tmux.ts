@@ -120,8 +120,15 @@ const PLAIN_KEYS = new Set(['Enter', 'Space', 'Tab', 'Escape', 'C-c'])
 export function assessedText (steps: KeyStep[]): { text: string, editing: boolean } {
     let text = ''
     let editing = false
-    for (const s of steps) {
-        if (s.kind === 'literal') text += s.value
+    for (let i = 0; i < steps.length; i++) {
+        const s = steps[i]
+        if (s.kind === 'literal') {
+            // Raw control bytes (^U, ^W, ESC...) edit the line like a chord would; only \n and \t are plain.
+            if (/[\x00-\x08\x0b-\x1f\x7f]/.test(s.value)) editing = true
+            text += s.value
+        }
+        // Escape followed by another step forms a meta sequence (Esc b = Alt-b), so only a final Escape is plain.
+        else if (s.value === 'Escape' && i < steps.length - 1) editing = true
         else if (s.value === 'Space') text += ' '
         else if (s.value === 'Tab') text += '\t'
         else if (s.value === 'Enter') text += '\n'
@@ -136,7 +143,23 @@ export function assessedText (steps: KeyStep[]): { text: string, editing: boolea
  * characters escaped, so the card cannot read differently from what is sent.
  */
 export function describeKeySteps (steps: KeyStep[]): string {
-    return steps.map(s => s.kind === 'key' ? `⟨${s.value}⟩` : JSON.stringify(s.value)).join(' ')
+    return steps.map(s => s.kind === 'key' ? `⟨${s.value}⟩` : quoteVisible(s.value)).join(' ')
+}
+
+/**
+ * Quote typed text so nothing in it can be invisible or reorder the card:
+ * control, format (zero-width, bidi), line/paragraph separator and non-ASCII
+ * space characters are shown as \u{...}, as are the quote and backslash.
+ */
+export function quoteVisible (text: string): string {
+    const body = [...text].map(ch => {
+        if (ch === '"' || ch === '\\') return `\\${ch}`
+        if (/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Zs}\p{Co}\p{Cn}]/u.test(ch) && ch !== ' ') {
+            return `\\u{${ch.codePointAt(0)!.toString(16)}}`
+        }
+        return ch
+    }).join('')
+    return `"${body}"`
 }
 
 // ---- what is the pane doing

@@ -100,11 +100,21 @@ test('assessedText flags editing keys but not menu answers or interrupts', () =>
     assert.equal(assessedText(toKeySteps(['rm -rf /x', 'left', 'backspace', 'enter'])).editing, true)
     assert.equal(assessedText(toKeySteps(['ctrl-a', 'x'])).editing, true)
     assert.equal(assessedText(toKeySteps(['1'])).editing, false)
-    assert.equal(assessedText(toKeySteps(['esc', 'y', 'enter'])).editing, false)
     assert.equal(assessedText(toKeySteps(['ctrl-c'])).editing, false)
+    // Esc followed by more keys forms a meta sequence (Esc b = Alt-b); a final Esc is plain.
+    assert.equal(assessedText(toKeySteps(['esc', 'y', 'enter'])).editing, true)
+    assert.equal(assessedText(toKeySteps(['1', 'esc'])).editing, false)
+    // Raw control bytes in a literal edit the line; \n and \t do not.
+    assert.equal(assessedText(toKeySteps(['rm -rf /x\x15ls'])).editing, true)
+    assert.equal(assessedText(toKeySteps(['a\tb\nc'])).editing, false)
 })
 
 test('describeKeySteps shows what is actually sent, with control characters escaped', () => {
     assert.equal(describeKeySteps(toKeySteps(['rm', 'space', '-rf', 'enter'])), '"rm" ⟨Space⟩ "-rf" ⟨Enter⟩')
-    assert.equal(describeKeySteps(toKeySteps(['a\nb', 'ctrl-c'])), '"a\\nb" ⟨C-c⟩')
+    assert.equal(describeKeySteps(toKeySteps(['a\nb', 'ctrl-c'])), '"a\\u{a}b" ⟨C-c⟩')
+})
+
+test('describeKeySteps makes invisible and bidi characters visible', () => {
+    assert.equal(describeKeySteps(toKeySteps(['y\u202Ees', 'a\u200Bb', 'x\u00A0y', 'say "hi"\\'])),
+        '"y\\u{202e}es" "a\\u{200b}b" "x\\u{a0}y" "say \\"hi\\"\\\\"')
 })
